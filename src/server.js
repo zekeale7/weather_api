@@ -273,8 +273,8 @@ app.patch(
     (req, res) => {
         const update_station_coordinates = req.body.update_station_id
             // Get weather station ID
-        const longitude = req.body.longitude_id
-            // Get weather station ID
+        const longitude = req.body.longitude_id;
+        // Get weather station ID
         const latitude = req.body.latitude_id
 
         // Get the access collection fromt the db
@@ -285,9 +285,11 @@ app.patch(
                 _id: ObjectID(update_station_coordinates)
             }, {
                 $set: {
-                    "Latitude": (latitude),
+                    "Latitude": (longitude),
+                    "Atmospheric Pressure (kPa)": (latitude),
 
                 }
+
             }, )
             .then((query_result) => {
                 res.status(200).json({
