@@ -83,6 +83,7 @@ app.post("/add_reading", auth(["station", "admin"]), (req, res) => {
 
 // Request a new authentication key
 // request_api_key
+app.options("/request_api_key", cors())
 app.post("/request_api_key", (req, res) => {
     const default_role = "client";
     const date_now = new Date()
@@ -148,50 +149,120 @@ app.get(
     "/max_precipitation_by_date_range",
     auth(["client, station", "admin"]),
     (req, res) => {
-        res.status(501).json({
-            code: 501,
-            message: "Not yet implemented"
-        });
+
+        // Get the readings collection from db
+        const readings = db.collection("readings");
+
+        // Get date range from body
+        const date_range = req.body.date_range_precipitation
+
+        // Get precipitation from body
+        const max_precipitation = req.body.max_precipitation_by_date
+
+        readings.aggregate([
+
+                {
+                    "$group": {
+                        _id: null,
+                        max_precipitation: { $max: "$Precipitation (mm/h)" },
+                    }
+                }
+            ])
+            .then(() => {
+                res.status(200).json({
+                    "Precipitation(mm / h)": max_precipitation
+
+                })
+            }).catch(() => {
+                res.status(500).json({
+                    code: 500,
+                    message: "Failed to find max precipitation",
+
+                });
+            });
     });
+
+app.get(
+    "/weather_metrics_at_datetime",
+    (req, res) => {
+
+        // Get access to database
+        const readings = db.collection("readings");
+
+        const find_metrics_by_time = req.body.time;
+
+        //get access to weather metrics
+        const weather = {
+            "_id": 0,
+            "Temperature (C)": 1,
+            "Atmospheric Pressure (kPa)": 1,
+            "Solar Radiation (W/m2)": 1,
+            "Precipitation mm/h": 1,
+        };
+
+        readings.find({
+                Time: {
+                    $gte: (find_metrics_by_time)
+                }
+            })
+            .project(weather)
+            .sort({
+                "Temperature (C)": -1,
+                "Atmospheric Pressure (kPa)": -1,
+                "Solar Radiation (W/m2)": -1,
+                "Precipitation mm/h": -1,
+            })
+            .limit(1).toArray()
+            .then((query_result) => {
+                res.status(200).json({
+                    code: 200,
+                    message: "weather metrics recieved",
+                    data: query_result,
+                });
+            })
+            .catch(error => {
+                response.status(500).json({
+                    code: error,
+                    message: "Failed to get weather metrics",
+                })
+            })
+    })
 
 // Request weather metrics by datetime
 // weather_metrics_at_datetime
-app.get(
-    "/weather_metrics_at_datetime",
-    auth(["client", "station", "admin"]),
-    (req, res) => {
-        // Request weather metrics from body
-        // Request datetime from body
-        const temperature = req.body.temperature
-        const datetime = req.body.time
-            // Get access to database
-        const readings = db.collection("readings")
+// app.options("/weather_metrics_at_datetime", cors())
+// app.get(
+//     "/weather_metrics_at_datetime",
+//     (req, res) => {
+//         // Request weather metrics from body
+//         // Request datetime from body
+//         const temperature = req.body.temperature
+//         const datetime = req.body.time
+//             // Get access to database
+//         const readings = db.collection("readings")
 
-        //Find the weather metrics using findMany()
-        //Find the datetime, and then find weather metrics with the speciic datetime given
-        // Filter weather metrics by datetime
-        readings.findOne({
-            "Time": { $eq: [req.body.time] }
-        }, {
-            "Temperature (C)": req.body.temperature
+//         //Find the weather metrics using findMany()
+//         //Find the datetime, and then find weather metrics with the speciic datetime given
+//         // Filter weather metrics by datetime
+//         readings.findOne({
 
-        }).then(() => {
-            res.status(200).json({
-                temperature,
-                datetime
-            })
-        }).catch(() => {
-            res.status(500).json({
-                code: 500,
-                message: "Failed to retrieve weather metrics",
-            });
-        });
-    });
+//             "Temperature (C)": req.body.temperature
 
+//         }).then(() => {
+//             res.status(200).json({
+
+//             })
+//         }).catch(() => {
+//             res.status(500).json({
+//                 code: 500,
+//                 message: "Failed to retrieve weather metrics",
+//             });
+//         });
+//     });
 
 // Delete one API Key 
 // delete_api_key
-app.options("/delete_api_key", cors())
+app.options("/delete_api_key", cors());
 app.delete(
     "/delete_api_key",
     auth(["admin"]),
@@ -267,6 +338,7 @@ app.patch(
 
 // Update coordinates of weather station
 // update_coordinates
+app.options("/update_coordinates", cors())
 app.patch(
     "/update_coordinates",
     auth(["client, station", "admin"]),
@@ -274,9 +346,7 @@ app.patch(
         const update_station_coordinates = req.body.update_station_id
             // Get weather station ID
         const longitude = req.body.longitude_id;
-        // Get weather station ID
-        const atmo = req.body.atmo_id
-            // Get weather station IDn
+        // Get weather station IDn
         const latitude = req.body.latitude_id
 
         // Get the access collection fromt the db
@@ -288,7 +358,7 @@ app.patch(
             }, {
                 $set: {
                     "Latitude": (latitude),
-                    "Atmospheric Pressure (kPa)": (atmo),
+                    "Longitude": (longitude),
                 }
 
             }, )
