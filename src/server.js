@@ -89,6 +89,8 @@ app.post("/request_api_key", (req, res) => {
     const date_now = new Date()
 
     const access = db.collection("access")
+
+
     access.insertOne({
             access_created_date: date_now,
             role: default_role,
@@ -122,6 +124,9 @@ app.patch(
         const reading_ids = req.body.readings_to_convert
             .filter((reading_id) => ObjectID.isValid(reading_id))
             .map((reading_id) => ObjectID(reading_id));
+
+        // Run triggers here
+        addTimeTrigger(readings);
 
         // updateMany filter: _id is in the list of reading ids
         // operation: set calculate and fahrenheit field
@@ -200,12 +205,14 @@ app.get(
             "Precipitation mm/h": 1,
         };
 
+        //Find time 
         readings.find({
                 Time: {
                     $gte: (find_metrics_by_time)
                 }
             })
             .project(weather)
+            // Sort object in specified order
             .sort({
                 "Temperature (C)": -1,
                 "Atmospheric Pressure (kPa)": -1,
@@ -357,7 +364,6 @@ app.patch(
                 _id: ObjectID(update_station_coordinates)
             }, {
                 $set: {
-                    "Latitude": (latitude),
                     "Longitude": (longitude),
                 }
 
@@ -375,7 +381,7 @@ app.patch(
             });
     });
 
-//
+// Add Device ID trigger   
 const addDeviceTrigger = (fullDocument) => {
     if (fullDocument["Device ID"] == null && fullDocument["Device Name"]) {
         const generatedDeviceID = fullDocument["Device Name"]
@@ -388,8 +394,17 @@ const addDeviceTrigger = (fullDocument) => {
             .join("_")
             .toLowerCase();
 
-        fullDocument["Device ID"] = generateDeviceID;
+        fullDocument["Device ID"] = generatedDeviceID;
 
+    }
+}
+
+// If coordinates are updated, update time to current
+const addTimeTrigger = (fullDocument) => {
+
+    const date_now = (new Date()).toISOString()
+    if (fullDocument["Time"] != date_now) {
+        fullDocument["Time"] = date_now;
     }
 }
 
