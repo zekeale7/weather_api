@@ -112,7 +112,7 @@ app.post("/request_api_key", (req, res) => {
 // Convert temperature to fahrenheit
 // convert_fahrenheit
 app.options("/convert_fahrenheit", cors())
-app.patch(
+app.put(
     "/convert_fahrenheit",
     auth(["client", "station", "admin"]),
     (req, res) => {
@@ -152,7 +152,7 @@ app.patch(
 // max_precipitation_by_date_range
 app.get(
     "/max_precipitation_by_date_range",
-    auth(["client, station", "admin"]),
+    // auth(["client, station", "admin"]),
     (req, res) => {
 
         // Get the readings collection from db
@@ -164,27 +164,11 @@ app.get(
         // Get precipitation from body
         const max_precipitation = req.body.max_precipitation_by_date
 
-        readings.aggregate([
 
-                {
-                    "$group": {
-                        _id: null,
-                        max_precipitation: { $max: "$Precipitation (mm/h)" },
-                    }
-                }
-            ])
-            .then(() => {
-                res.status(200).json({
-                    "Precipitation(mm / h)": max_precipitation
-
-                })
-            }).catch(() => {
-                res.status(500).json({
-                    code: 500,
-                    message: "Failed to find max precipitation",
-
-                });
-            });
+        res.status(501).json({
+            code: 501,
+            message: "Not yet implemented"
+        });
     });
 
 app.get(
@@ -345,15 +329,16 @@ app.patch(
 
 // Update coordinates of weather station
 // update_coordinates
-app.options("/update_coordinates", cors())
 app.patch(
     "/update_coordinates",
-    auth(["client, station", "admin"]),
+    // auth(["client, station", "admin"]),
     (req, res) => {
         const update_station_coordinates = req.body.update_station_id
             // Get weather station ID
         const longitude = req.body.longitude_id;
-        // Get weather station IDn
+        // Get weather station ID
+        const atmo = req.body.atmo_id
+            // Get weather station IDn
         const latitude = req.body.latitude_id
 
         // Get the access collection fromt the db
@@ -364,7 +349,8 @@ app.patch(
                 _id: ObjectID(update_station_coordinates)
             }, {
                 $set: {
-                    "Longitude": (longitude),
+                    "Longitude": (latitude),
+                    "Atmospheric Pressure (kPa)": (atmo),
                 }
 
             }, )
